@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <meta name="theme-color" content="#2C1810"/>
 <title>Mise. — Tu cocina inteligente</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -2210,7 +2211,12 @@ document.addEventListener('click',function(e){
     ss.classList.remove('open');
 });
 
-// ── INIT ──────────────────────────────────────────────────────────────────────
+// Conexión con Supabase
+const SUPABASE_URL = 'https://nonhmzhcyekgmbginazm.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_SjXd2rFXP1x2WWDg1rKDdw_IM38qQmQ';
+
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  // ── INIT ──────────────────────────────────────────────────────────────────────
 renderCocina();
 renderGlobalTips();
 loadCocinaApiMeals(); // load TheMealDB recipes for ¡A la cocina! in background
