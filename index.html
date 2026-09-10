@@ -2663,7 +2663,21 @@ async function guardarInventarioSupabase() {
     console.error('Error al guardar el inventario en Supabase:', error.message);
   }
 }
-
+async function cargarRecetasSupabase() {
+    try {
+        const { data, error } = await window.supabaseClient.from('recipes').select('*');
+        if (error) throw error;
+        
+        window.LOCAL_RECIPES = data || [];
+        
+        if (typeof renderAllRecipes === 'function') renderAllRecipes();
+        if (typeof renderMetrics === 'function') renderMetrics();
+        if (typeof renderCocina === 'function') renderCocina();
+    } catch (err) {
+        console.error("Error al cargar recetas de Supabase:", err);
+        window.LOCAL_RECIPES = [];
+    }
+}
 async function cargarInventario() {
   if (usuarioActual) {
     try {
@@ -2683,6 +2697,28 @@ async function cargarInventario() {
       console.error('Error al cargar inventario:', e);
     }
   }
+async function cargarInventario() {
+    if (usuarioActual) {
+        try {
+            const { data, error } = await window.supabaseClient
+                .from('user_inventory')
+                .select('*')
+                .eq('user_id', usuarioActual.id);
+
+            if (error) throw error;
+
+            if (data && data.length > 0 && data[0].items) {
+                invState = data[0].items;
+                renderInv();
+                renderMetrics();
+            }
+        } catch (e) {
+            console.error('Error al cargar inventario:', e);
+        }
+    }
+    
+        cargarRecetasSupabase();
+}
 }
 
 // Guardar o Actualizar un ingrediente en el Inventario
