@@ -609,10 +609,11 @@ input:checked+.slider-tog:before{transform:translateX(17px)}
     }
     actualizarInterfazUsuario();
 
-    window.supabaseClient.auth.onAuthStateChange((_event, session) => {
-      usuarioActual = session ? session.user : null;
-      actualizarInterfazUsuario();
-    });
+window.supabaseClient.auth.onAuthStateChange(async (_event, session) => {
+  usuarioActual = session ? session.user : null;
+  await cargarInventario(); // <- Esto asegura que se descargue el inventario correcto al cambiar de sesión
+  actualizarInterfazUsuario();
+});
   }
 
   // Ejecutar verificación al inicio
