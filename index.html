@@ -2151,7 +2151,9 @@ function addIngredient(){
   document.getElementById('inv-qty').value='';
   document.getElementById('inv-unit-btn').textContent='—';
   selectedIngForAdd=null;
-  renderInv();renderMetrics();
+  renderInv();
+    renderMetrics();
+    guardarInventarioSupabase();
 }
 
 function renderInv(){
@@ -2643,46 +2645,42 @@ async function syncRecipesToSupabase() {
 loadCocinaApiMeals(); // load TheMealDB recipes for ¡A la cocina! in background
 // === GESTIÓN DE INVENTARIO CON SUPABASE ===
 
-// Cargar inventario desde Supabase o localStorage
+// Cargar inventario desde Supabase
 // Cargar inventario persistente desde Supabase por usuario
+async function guardarInventarioSupabase() {
+  if (!window.supabaseClient || !usuarioActual) return;
+  
+  const { error } = await window.supabaseClient
+    .from('user_inventory')
+    .upsert({
+      user_id: usuarioActual.id,
+      items: invState,
+      updated_at: new Date()
+    }, { onConflict: 'user_id' });
+
+  if (error) {
+    console.error('Error al guardar el inventario en Supabase:', error.message);
+  }
+}
+
 async function cargarInventario() {
   if (usuarioActual) {
     try {
       const { data, error } = await window.supabaseClient
         .from('user_inventory')
         .select('*')
-        .eq('user_id', usuarioActual.id)
-        .order('ingredient', { ascending: true });
-
-      if (error) throw error;
-
-      const invObj = {};
-
-      if (data && data.length > 0) {
-        data.forEach(item => {
-          invObj[item.ingredient] = { 
-            quantity: Number(item.quantity), 
-            unit: item.unit, 
-            id: item.id 
-          };
-        });
-      }
+        .eq('user_id', usuarioActual.id);
       
-      // Asignar los datos reales recuperados de la nube
-      window.MY_INVENTORY = invObj;
-
-      if (typeof renderInventoryUI === 'function') renderInventoryUI();
-      if (typeof renderInventory === 'function') renderInventory();
-      if (typeof renderRecipes === 'function') renderRecipes();
-    } catch (err) {
-      console.error('Error al recuperar el inventario persistente de Supabase:', err);
+      if (error) throw error;
+      
+      if (data && data.length > 0 && data[0].items) {
+        invState = data[0].items;
+        renderInv();
+        renderMetrics();
+      }
+    } catch (e) {
+      console.error('Error al cargar inventario:', e);
     }
-  } else {
-    // Si no hay sesión iniciada, el inventario se muestra vacío
-    window.MY_INVENTORY = {};
-    if (typeof renderInventoryUI === 'function') renderInventoryUI();
-    if (typeof renderInventory === 'function') renderInventory();
-    if (typeof renderRecipes === 'function') renderRecipes();
   }
 }
 
