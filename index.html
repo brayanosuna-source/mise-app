@@ -2366,6 +2366,7 @@ function addCheckedToInventory(){
     total+' '+(total===1?'ingrediente agregado':'ingredientes agregados')+' al inventario':
     total+' item'+(total!==1?'s':'')+' added to inventory';
   showToast('📦 '+msg);
+guardarInventarioSupabase();
 }
 
 function getShopText(){
