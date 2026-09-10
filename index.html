@@ -597,9 +597,9 @@ input:checked+.slider-tog:before{transform:translateX(17px)}
         userBtn.innerText = '👤 Entrar';
         userBtn.onclick = abrirAuthModal;
       }
-    }
-  }
-
+ }
+  cargarInventario();
+}
   // Escuchar cambios de sesión al cargar la página
   async function verificarSesionSupabase() {
     if (!window.supabaseClient) return;
@@ -2659,6 +2659,97 @@ async function syncRecipesToSupabase() {
 
 // syncRecipesToSupabase();
 loadCocinaApiMeals(); // load TheMealDB recipes for ¡A la cocina! in background
+// === GESTIÓN DE INVENTARIO CON SUPABASE ===
+
+// Cargar inventario desde Supabase o localStorage
+async function cargarInventario() {
+  if (usuarioActual) {
+    try {
+      const { data, error } = await window.supabaseClient
+        .from('user_inventory')
+        .select('*')
+        .order('ingredient', { ascending: true });
+
+      if (error) throw error;
+
+      const invObj = {};
+      data.forEach(item => {
+        invObj[item.ingredient] = { quantity: item.quantity, unit: item.unit, id: item.id };
+      });
+      
+      window.MY_INVENTORY = invObj;
+      if (typeof renderInventoryUI === 'function') renderInventoryUI();
+      if (typeof renderInventory === 'function') renderInventory();
+    } catch (err) {
+      console.error('Error al cargar inventario de Supabase:', err);
+    }
+  } else {
+    const localData = localStorage.getItem('mise_inventory');
+    window.MY_INVENTORY = localData ? JSON.parse(localData) : {};
+    if (typeof renderInventoryUI === 'function') renderInventoryUI();
+    if (typeof renderInventory === 'function') renderInventory();
+  }
+}
+
+// Guardar o Actualizar un ingrediente en el Inventario
+async function guardarIngredienteInventario(nombre, cantidad, unidad = 'g') {
+  if (!nombre) return;
+  const ingNombre = nombre.trim().toLowerCase();
+
+  if (usuarioActual) {
+    try {
+      const { data: existente } = await window.supabaseClient
+        .from('user_inventory')
+        .select('id')
+        .eq('ingredient', ingNombre)
+        .maybeSingle();
+
+      if (existente) {
+        await window.supabaseClient
+          .from('user_inventory')
+          .update({ quantity: cantidad, unit: unidad, updated_at: new Date() })
+          .eq('id', existente.id);
+      } else {
+        await window.supabaseClient
+          .from('user_inventory')
+          .insert([{ user_id: usuarioActual.id, ingredient: ingNombre, quantity: cantidad, unit: unidad }]);
+      }
+      await cargarInventario();
+    } catch (err) {
+      console.error('Error al guardar ingrediente en Supabase:', err);
+    }
+  } else {
+    if (!window.MY_INVENTORY) window.MY_INVENTORY = {};
+    window.MY_INVENTORY[ingNombre] = { quantity: cantidad, unit: unidad };
+    localStorage.setItem('mise_inventory', JSON.stringify(window.MY_INVENTORY));
+    if (typeof renderInventoryUI === 'function') renderInventoryUI();
+    if (typeof renderInventory === 'function') renderInventory();
+  }
+}
+
+// Eliminar ingrediente del Inventario
+async function eliminarIngredienteInventario(nombre) {
+  const ingNombre = nombre.trim().toLowerCase();
+
+  if (usuarioActual) {
+    try {
+      await window.supabaseClient
+        .from('user_inventory')
+        .delete()
+        .eq('ingredient', ingNombre);
+      await cargarInventario();
+    } catch (err) {
+      console.error('Error al eliminar de Supabase:', err);
+    }
+  } else {
+    if (window.MY_INVENTORY && window.MY_INVENTORY[ingNombre]) {
+      delete window.MY_INVENTORY[ingNombre];
+      localStorage.setItem('mise_inventory', JSON.stringify(window.MY_INVENTORY));
+      if (typeof renderInventoryUI === 'function') renderInventoryUI();
+      if (typeof renderInventory === 'function') renderInventory();
+    }
+  }
+}
 </script>
 </body>
 </html>
