@@ -491,7 +491,26 @@ input:checked+.slider-tog:before{transform:translateX(17px)}
   const SUPABASE_URL = 'https://nonhmzhcyekgmbginazm.supabase.co';
   const SUPABASE_KEY = 'sb_publishable_SjXd2rFXP1x2WWDg1rKDdw_IM38qQmQ';
   window.supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+async function cargarRecetasDesdeSupabase() {
+    if (!window.supabaseClient) return;
+    
+    const { data, error } = await window.supabaseClient
+      .from('recipes')
+      .select('*');
 
+    if (error) {
+      console.error('Error al cargar recetas de Supabase:', error.message);
+      return;
+    }
+
+    if (data && data.length > 0) {
+      window.LOCAL_RECIPES = data;
+      if (typeof renderCocina === 'function') renderCocina();
+      if (typeof renderAllRecipes === 'function') renderAllRecipes();
+    }
+  }
+
+  cargarRecetasDesdeSupabase();
   // LANGUAGE
   var appLang = 'es';
   var STRINGS = {
