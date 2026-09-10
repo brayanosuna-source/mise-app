@@ -937,33 +937,10 @@ var ING_CATALOG=[
 // LOCAL_RECIPES se carga desde recetas.js (ver <script src="recetas.js">)
 
 // ── STATE ─────────────────────────────────────────────────────────────────────
-var invState=[
-  {id:'harina',name:'Harina de trigo',qty:500,unit:'g',min:100},
-  {id:'huevos',name:'Huevos',qty:6,unit:'u',min:2},
-  {id:'leche',name:'Leche entera',qty:800,unit:'ml',min:200},
-  {id:'manteca',name:'Manteca',qty:150,unit:'g',min:50},
-  {id:'azucar',name:'Azúcar blanca',qty:300,unit:'g',min:50},
-  {id:'sal',name:'Sal',qty:200,unit:'g',min:20},
-  {id:'aceite',name:'Aceite de girasol',qty:400,unit:'ml',min:100},
-  {id:'aceite_oliva',name:'Aceite de oliva',qty:0,unit:'ml',min:50},
-  {id:'tomate',name:'Tomates',qty:4,unit:'u',min:2},
-  {id:'cebolla',name:'Cebolla',qty:3,unit:'u',min:1},
-  {id:'ajo',name:'Ajo',qty:8,unit:'u',min:2},
-  {id:'pollo',name:'Pollo (pechuga)',qty:500,unit:'g',min:200},
-  {id:'papa',name:'Papas',qty:0,unit:'g',min:200},
-  {id:'zanahoria',name:'Zanahoria',qty:2,unit:'u',min:1},
-  {id:'queso',name:'Queso rallado',qty:100,unit:'g',min:30},
-  {id:'oregano',name:'Orégano',qty:50,unit:'g',min:10},
-  {id:'levadura',name:'Levadura',qty:0,unit:'g',min:10},
-  {id:'avena',name:'Avena',qty:400,unit:'g',min:100},
-  {id:'banana',name:'Banana',qty:3,unit:'u',min:1},
-];
+var invState=[];
 var wishlist=[];
 var shopList=[];
-var cookHistory=[
-  {name:'Panqueques',date:'Hoy',kcal:320,prot:12,carbs:45,grasas:9},
-  {name:'Pollo al ajillo',date:'Ayer',kcal:380,prot:42,carbs:2,grasas:22},
-];
+var cookHistory=[];
 var prefs={region:'ar',localFirst:true,goal:'balance',kcal:2000,allergies:[],diets:[]};
 var recFilter='all';
 var currentRecipeId=null;
