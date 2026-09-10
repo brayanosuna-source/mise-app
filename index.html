@@ -600,13 +600,13 @@ input:checked+.slider-tog:before{transform:translateX(17px)}
  }
   cargarInventario();
 }
-  // Escuchar cambios de sesión al cargar la página
+// Escuchar cambios de sesión al cargar la página
 async function verificarSesionSupabase() {
   if (!window.supabaseClient) return;
   const { data: { session } } = await window.supabaseClient.auth.getSession();
   if (session) {
     usuarioActual = session.user;
-    await cargarInventario(); // <- Aquí está el llamado vital al iniciar la página
+    await cargarInventario();
   } else {
     usuarioActual = null;
     window.MY_INVENTORY = {};
@@ -616,10 +616,9 @@ async function verificarSesionSupabase() {
 
 window.supabaseClient.auth.onAuthStateChange(async (_event, session) => {
   usuarioActual = session ? session.user : null;
-  await cargarInventario(); // <- Esto asegura que se descargue el inventario correcto al cambiar de sesión
+  await cargarInventario();
   actualizarInterfazUsuario();
 });
-  }
 
   // Ejecutar verificación al inicio
   verificarSesionSupabase();
