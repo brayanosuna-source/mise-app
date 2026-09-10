@@ -601,13 +601,18 @@ input:checked+.slider-tog:before{transform:translateX(17px)}
   cargarInventario();
 }
   // Escuchar cambios de sesión al cargar la página
-  async function verificarSesionSupabase() {
-    if (!window.supabaseClient) return;
-    const { data: { session } } = await window.supabaseClient.auth.getSession();
-    if (session) {
-      usuarioActual = session.user;
-    }
-    actualizarInterfazUsuario();
+async function verificarSesionSupabase() {
+  if (!window.supabaseClient) return;
+  const { data: { session } } = await window.supabaseClient.auth.getSession();
+  if (session) {
+    usuarioActual = session.user;
+    await cargarInventario(); // <- Aquí está el llamado vital al iniciar la página
+  } else {
+    usuarioActual = null;
+    window.MY_INVENTORY = {};
+  }
+  actualizarInterfazUsuario();
+}
 
 window.supabaseClient.auth.onAuthStateChange(async (_event, session) => {
   usuarioActual = session ? session.user : null;
