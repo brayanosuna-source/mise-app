@@ -2662,32 +2662,45 @@ loadCocinaApiMeals(); // load TheMealDB recipes for ¡A la cocina! in background
 // === GESTIÓN DE INVENTARIO CON SUPABASE ===
 
 // Cargar inventario desde Supabase o localStorage
+// Cargar inventario persistente desde Supabase por usuario
 async function cargarInventario() {
   if (usuarioActual) {
     try {
       const { data, error } = await window.supabaseClient
         .from('user_inventory')
         .select('*')
+        .eq('user_id', usuarioActual.id)
         .order('ingredient', { ascending: true });
 
       if (error) throw error;
 
       const invObj = {};
-      data.forEach(item => {
-        invObj[item.ingredient] = { quantity: item.quantity, unit: item.unit, id: item.id };
-      });
+
+      if (data && data.length > 0) {
+        data.forEach(item => {
+          invObj[item.ingredient] = { 
+            quantity: Number(item.quantity), 
+            unit: item.unit, 
+            id: item.id 
+          };
+        });
+      }
       
+      // Asignar los datos reales recuperados de la nube
       window.MY_INVENTORY = invObj;
+
       if (typeof renderInventoryUI === 'function') renderInventoryUI();
       if (typeof renderInventory === 'function') renderInventory();
+      if (typeof renderRecipes === 'function') renderRecipes();
     } catch (err) {
-      console.error('Error al cargar inventario de Supabase:', err);
+      console.error('Error al recuperar el inventario persistente de Supabase:', err);
     }
   } else {
-    const localData = localStorage.getItem('mise_inventory');
-    window.MY_INVENTORY = localData ? JSON.parse(localData) : {};
+    // Si no hay sesión iniciada, el inventario se muestra vacío
+    window.MY_INVENTORY = {};
     if (typeof renderInventoryUI === 'function') renderInventoryUI();
     if (typeof renderInventory === 'function') renderInventory();
+    if (typeof renderRecipes === 'function') renderRecipes();
   }
 }
 
