@@ -4,8 +4,10 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <meta name="theme-color" content="#2C1810"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="default"/>
 <title>Mise. — Tu cocina inteligente</title>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -256,6 +258,15 @@ input:checked+.slider-tog:before{transform:translateX(17px)}
 
 <div id="page-cocina" class="page active">
   <div class="metrics" id="metrics"></div>
+  <div style="position:relative;margin-bottom:.75rem">
+    <input class="inv-search" id="cocina-search" type="text"
+      placeholder="Buscar receta... (ej: panqueques, pollo, pasta)"
+      oninput="renderCocina()" autocomplete="off"
+      style="width:100%;padding:10px 16px 10px 40px;font-size:14px;border-radius:var(--radius-pill)"/>
+    <span style="position:absolute;left:14px;top:50%;transform:translateY(-50%);font-size:16px;pointer-events:none">🔍</span>
+    <button id="cocina-search-clear" onclick="clearCocinaSearch()"
+      style="display:none;position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:16px;color:var(--text3)">✕</button>
+  </div>
   <div class="filters">
     <span class="fbadge active" id="filter-all" onclick="setFilter('all',this)">Todas</span>
     <span class="fbadge" id="filter-ok" onclick="setFilter('ok',this)">Listas para cocinar</span>
@@ -280,6 +291,7 @@ input:checked+.slider-tog:before{transform:translateX(17px)}
 <div id="page-detalle" class="page">
   <button class="back-btn" id="back-btn" onclick="showPage('cocina')">← Volver</button>
   <div id="detalle-content"></div>
+  <div id="recipe-nav-bar" style="display:none;align-items:center;gap:8px;margin-bottom:1rem;padding:8px;background:#fff;border:0.5px solid var(--peach);border-radius:var(--radius-sm)"></div>
   <div id="instrucciones-section" style="display:none">
     <div class="instrucciones">
       <div class="instr-header">
@@ -378,6 +390,15 @@ input:checked+.slider-tog:before{transform:translateX(17px)}
   </div>
   <div id="rec-wish-content"></div>
   <div id="rec-all-content" style="display:none">
+    <div style="position:relative;margin-bottom:.75rem">
+      <input class="inv-search" id="rall-search" type="text"
+        placeholder="Buscar receta... (ej: milanesas, arroz, sopa)"
+        oninput="renderAllRecipes()" autocomplete="off"
+        style="width:100%;padding:10px 16px 10px 40px;font-size:14px;border-radius:var(--radius-pill)"/>
+      <span style="position:absolute;left:14px;top:50%;transform:translateY(-50%);font-size:16px;pointer-events:none">🔍</span>
+      <button id="rall-search-clear" onclick="clearRallSearch()"
+        style="display:none;position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:16px;color:var(--text3)">✕</button>
+    </div>
     <div class="filters" style="margin-bottom:1rem">
       <select id="rall-cat" onchange="renderAllRecipes()"><option value="all">Categoría</option><option value="Desayuno">Desayuno</option><option value="Almuerzo">Almuerzo</option><option value="Cena">Cena</option><option value="Merienda">Merienda</option></select>
     </div>
@@ -428,6 +449,11 @@ input:checked+.slider-tog:before{transform:translateX(17px)}
     </div>
   </div>
   <div class="pref-section">
+    <div class="pref-title" id="pref-diet-title">Dieta y estilo alimentario</div>
+    <div style="font-size:12px;color:var(--text3);margin-bottom:8px;font-family:sans-serif" id="pref-diet-note">Filtrá recetas según tu estilo de alimentación. Las recetas incompatibles no aparecerán en ¡A la cocina!</div>
+    <div class="allergy-grid" id="diet-grid"></div>
+  </div>
+  <div class="pref-section">
     <div class="pref-title" id="pref-allergy-title">Alergias e intolerancias</div>
     <div style="font-size:12px;color:var(--text3);margin-bottom:8px;font-family:sans-serif" id="pref-allergy-note">Seleccioná los ingredientes que debés evitar. Las recetas con esos ingredientes quedarán ocultas o mostradas con alternativas.</div>
     <div class="allergy-grid" id="allergy-grid"></div>
@@ -460,10 +486,15 @@ input:checked+.slider-tog:before{transform:translateX(17px)}
 
 <div class="toast" id="toast"></div>
 
+<script src="recetas.js"></script>
 <script>
-// ── LANGUAGE ─────────────────────────────────────────────────────────────────
-var appLang='es';
-var STRINGS={
+  const SUPABASE_URL = 'https://nonhmzhcyekgmbginazm.supabase.co';
+  const SUPABASE_KEY = 'sb_publishable_SjXd2rFXP1x2WWDg1rKDdw_IM38qQmQ';
+  window.supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+  // LANGUAGE
+  var appLang = 'es';
+  var STRINGS = {
   es:{
     nav_cocina:'¡A la cocina!',nav_inventario:'Inventario',nav_lista:'Lista',
     nav_tips:'Tips',nav_recetas:'Recetas',nav_balance:'Balance',nav_prefs:'Preferencias',
@@ -612,6 +643,7 @@ function updateStaticStrings(){
     'prefs-sub':s('prefs_sub'),
     'pref-region-title':s('mi_region'),'pref-region-lbl':s('mi_region'),
     'pref-region-note':s('region_note'),'pref-local-lbl':s('priorizar'),
+    'pref-diet-title':(appLang==='es'?'Dieta y estilo alimentario':'Diet & lifestyle'),
     'pref-allergy-title':s('alergias'),'pref-allergy-note':s('alergias_note'),
     'pref-nut-title':s('obj_nut'),'pref-goal-lbl':s('mi_objetivo'),'pref-kcal-lbl':s('calorias_dia'),
     'th-ing':s('nav_inventario'),'th-adj':s('nav_inventario'),
@@ -629,23 +661,33 @@ var REGION_FLAGS={ar:'🇦🇷',mx:'🇲🇽',es:'🇪🇸',co:'🇨🇴',pe:'�
 
 var DIETS=[
   {id:'vegetariano',label:'Vegetariano',labelEn:'Vegetarian',
+   icon:'🥦',
    excludes:['pollo','pollo_muslo','carne_molida','lomo','asado','vacio','cerdo','panceta','jamon','jamon_crudo','salchicha','chorizo','atun_lata','salmon','merluza','camaron','langostinos','sardinas'],
    note:'Sin carnes ni pescados',noteEn:'No meat or fish'},
   {id:'vegano',label:'Vegano',labelEn:'Vegan',
+   icon:'🌱',
    excludes:['pollo','pollo_muslo','carne_molida','lomo','asado','cerdo','panceta','jamon','jamon_crudo','salchicha','chorizo','atun_lata','salmon','merluza','camaron','sardinas','huevos','leche','leche_ent','leche_desc','manteca','crema','yogur','yogur_griego','queso','queso_c','queso_muzz','queso_ricota','leche_cond'],
    note:'Sin productos animales',noteEn:'No animal products'},
+  {id:'sinAzucar',label:'Sin azúcar',labelEn:'Sugar-free',
+   icon:'🚫🍬',
+   excludes:['azucar','azucar_m','azucar_imp','miel','dulce_leche','mermelada','jarabe_arce','leche_cond'],
+   note:'Sin azúcar agregada',noteEn:'No added sugar'},
   {id:'sinGluten',label:'Sin gluten',labelEn:'Gluten-free',
-   excludes:['harina','harina_int','levadura','pasta','pasta_int','pan','pan_molde','pan_rallado'],
+   icon:'🌾❌',
+   excludes:['harina','harina_int','levadura','pasta','pasta_int','pan','pan_molde','pan_rallado','cous_cous'],
    note:'Sin trigo ni gluten',noteEn:'No wheat or gluten'},
-  {id:'cetogenica',label:'Cetogénica',labelEn:'Keto',
-   excludes:['arroz','arroz_int','pasta','pasta_int','pan','pan_molde','azucar','azucar_m','azucar_imp','polenta','choclo'],
-   note:'Baja en carbohidratos',noteEn:'Low carb'},
   {id:'sinLactosa',label:'Sin lactosa',labelEn:'Lactose-free',
+   icon:'🥛❌',
    excludes:['leche','leche_ent','leche_desc','manteca','crema','yogur','yogur_griego','queso','queso_c','queso_muzz','queso_ricota','leche_cond'],
    note:'Sin lácteos',noteEn:'No dairy'},
-  {id:'paleo',label:'Paleo',labelEn:'Paleo',
-   excludes:['arroz','arroz_int','pasta','pasta_int','pan','pan_molde','azucar','azucar_m','legumbres','lentejas','garbanzos','porotos','soja','tofu'],
-   note:'Sin cereales ni legumbres',noteEn:'No grains or legumes'},
+  {id:'cetogenica',label:'Keto',labelEn:'Keto',
+   icon:'🥑',
+   excludes:['arroz','arroz_int','pasta','pasta_int','pan','pan_molde','azucar','azucar_m','azucar_imp','polenta','choclo','lentejas','garbanzos','porotos'],
+   note:'Muy baja en carbohidratos',noteEn:'Very low carb'},
+  {id:'kosher',label:'Kosher',labelEn:'Kosher',
+   icon:'✡️',
+   excludes:['cerdo','panceta','salchicha','chorizo','camaron','langostinos','mariscos'],
+   note:'Sin cerdo ni mariscos',noteEn:'No pork or shellfish'},
 ];
 
 var ALLERGENS=[
@@ -747,59 +789,7 @@ var ING_CATALOG=[
   {id:'levadura_nutric',name:'Levadura nutricional',unit:'g',cat:'Varios'},
 ];
 
-var LOCAL_RECIPES=[
-  {id:1,name:'Panqueques',cat:'Desayuno',region:'ar',allergens:['gluten','lactosa','huevo'],
-   desc:'Clásicos panqueques esponjosos, perfectos para el desayuno familiar.',
-   ings:[{id:'harina',qty:200,unit:'g'},{id:'huevos',qty:2,unit:'u'},{id:'leche',qty:300,unit:'ml'},{id:'manteca',qty:30,unit:'g'},{id:'sal',qty:2,unit:'g'}],
-   nut:{kcal:320,prot:12,carbs:45,grasas:9},porciones:4,
-   pasos:[
-     {titulo:'Mezclá los secos',instruccion:'En un bowl, combiná la harina y la sal. Hacé un hueco en el centro.',timer:0},
-     {titulo:'Incorporá los húmedos',instruccion:'Agregá los huevos y la mitad de la leche. Mezclá desde el centro hacia afuera.',timer:0},
-     {titulo:'Reposo de la mezcla',instruccion:'Sumá el resto de la leche y la manteca derretida. Dejá reposar 5 min.',timer:300},
-     {titulo:'Cociná cada panqueque',instruccion:'Volcá un cucharón de mezcla en la sartén con un poco de manteca. Cociná hasta que los bordes estén secos y aparezcan burbujas.',timer:120,cicloStart:true,batchSize:1},
-     {titulo:'Dales vuelta',instruccion:'Con una espátula, dales vuelta con decisión. Solo 30 segundos del otro lado y listo.',timer:30,cicloEnd:true}
-   ]},
-  {id:2,name:'Tarta de tomate y queso',cat:'Almuerzo',region:'ar',allergens:['gluten','lactosa','huevo'],
-   desc:'Tarta casera con masa crocante, tomates frescos y queso gratinado.',
-   ings:[{id:'harina',qty:250,unit:'g'},{id:'manteca',qty:80,unit:'g'},{id:'huevos',qty:2,unit:'u'},{id:'tomate',qty:3,unit:'u'},{id:'queso',qty:80,unit:'g'},{id:'sal',qty:5,unit:'g'},{id:'oregano',qty:5,unit:'g'}],
-   nut:{kcal:480,prot:18,carbs:52,grasas:22},porciones:6,
-   pasos:[{titulo:'Hacé la masa',instruccion:'Mezclá harina, manteca fría y sal hasta textura arenosa.',timer:0},{titulo:'Reposá',instruccion:'Envolvé en film y dejá en heladera.',timer:1800},{titulo:'Horneá',instruccion:'Horneá a 180°C hasta dorar.',timer:2400}]},
-  {id:3,name:'Pollo al ajillo',cat:'Cena',region:'es',allergens:['cebolla'],
-   desc:'Pollo jugoso dorado en aceite con ajo, típico de la cocina española.',
-   ings:[{id:'pollo',qty:500,unit:'g'},{id:'ajo',qty:6,unit:'u'},{id:'aceite_oliva',qty:50,unit:'ml'},{id:'sal',qty:5,unit:'g'}],
-   nut:{kcal:380,prot:42,carbs:2,grasas:22},porciones:4,
-   pasos:[{titulo:'Prepará el pollo',instruccion:'Secá bien el pollo. Salá generosamente.',timer:0},{titulo:'Dorá el ajo',instruccion:'En aceite a fuego medio, dorá el ajo laminado.',timer:120},{titulo:'Sellá y cociná',instruccion:'Sellá el pollo a fuego alto, luego tapá y cociná a fuego medio.',timer:900}]},
-  {id:4,name:'Sopa de verduras',cat:'Cena',region:'all',allergens:['cebolla'],
-   desc:'Sopa reconfortante con zanahoria, cebolla y verduras de estación.',
-   ings:[{id:'papa',qty:400,unit:'g'},{id:'zanahoria',qty:2,unit:'u'},{id:'cebolla',qty:1,unit:'u'},{id:'ajo',qty:2,unit:'u'},{id:'sal',qty:5,unit:'g'},{id:'aceite',qty:20,unit:'ml'}],
-   nut:{kcal:210,prot:5,carbs:42,grasas:4},porciones:4,
-   pasos:[{titulo:'Sofrito',instruccion:'Rehogá cebolla y ajo en aceite.',timer:300},{titulo:'Cociná',instruccion:'Sumá zanahoria y papa. Cubrí con agua y cociná.',timer:1800}]},
-  {id:5,name:'Bizcochuelo',cat:'Merienda',region:'ar',allergens:['gluten','lactosa','huevo'],
-   desc:'El clásico bizcochuelo esponjoso de la merienda argentina.',
-   ings:[{id:'harina',qty:200,unit:'g'},{id:'huevos',qty:3,unit:'u'},{id:'azucar',qty:150,unit:'g'},{id:'leche',qty:100,unit:'ml'},{id:'levadura',qty:15,unit:'g'},{id:'manteca',qty:50,unit:'g'}],
-   nut:{kcal:420,prot:9,carbs:72,grasas:12},porciones:8,
-   pasos:[{titulo:'Batí los huevos',instruccion:'Batí huevos con azúcar hasta espumar.',timer:300},{titulo:'Incorporá secos',instruccion:'Tamizá harina y levadura. Incorporá en forma envolvente.',timer:0},{titulo:'Horneá',instruccion:'Volcá en molde enmantecado. Horneá a 180°C.',timer:2700}]},
-  {id:6,name:'Tortilla española',cat:'Almuerzo',region:'es',allergens:['huevo','cebolla'],
-   desc:'La auténtica tortilla de patatas española, cremosa por dentro.',
-   ings:[{id:'papa',qty:300,unit:'g'},{id:'huevos',qty:4,unit:'u'},{id:'cebolla',qty:1,unit:'u'},{id:'aceite',qty:60,unit:'ml'},{id:'sal',qty:4,unit:'g'}],
-   nut:{kcal:350,prot:16,carbs:38,grasas:16},porciones:4,
-   pasos:[
-     {titulo:'Cociná las papas',instruccion:'En aceite a fuego bajo, cociná papas laminadas con cebolla hasta que estén tiernas.',timer:1200},
-     {titulo:'Mezclá con huevo',instruccion:'Batí los huevos con sal. Mezclá con las papas escurridas.',timer:0},
-     {titulo:'Cuajá la tortilla',instruccion:'Volcá la mezcla en la sartén a fuego medio-bajo. Cociná sin mover hasta que esté firme por abajo.',timer:300},
-     {titulo:'Dales vuelta',instruccion:'Con un plato encima, dales vuelta con decisión. Cocinala 2 min más del otro lado.',timer:120}
-   ]},
-  {id:7,name:'Porridge de avena',cat:'Desayuno',region:'all',allergens:['lactosa'],
-   desc:'Desayuno nutritivo y rápido con avena cremosa y banana.',
-   ings:[{id:'avena',qty:80,unit:'g'},{id:'leche',qty:250,unit:'ml'},{id:'banana',qty:1,unit:'u'},{id:'azucar',qty:15,unit:'g'}],
-   nut:{kcal:285,prot:10,carbs:54,grasas:5},porciones:1,
-   pasos:[{titulo:'Calentá la leche',instruccion:'Calentá a fuego medio.',timer:120},{titulo:'Cociná la avena',instruccion:'Agregá avena y azúcar. Revolvé a fuego bajo.',timer:300},{titulo:'Serví',instruccion:'Con banana en rodajas por encima.',timer:0}]},
-  {id:8,name:'Salsa criolla',cat:'Almuerzo',region:'ar',allergens:['cebolla'],
-   desc:'La clásica salsa criolla argentina para acompañar carnes y empanadas.',
-   ings:[{id:'tomate',qty:4,unit:'u'},{id:'cebolla',qty:1,unit:'u'},{id:'ajo',qty:4,unit:'u'},{id:'aceite',qty:30,unit:'ml'},{id:'sal',qty:4,unit:'g'},{id:'oregano',qty:5,unit:'g'}],
-   nut:{kcal:190,prot:5,carbs:28,grasas:7},porciones:4,
-   pasos:[{titulo:'Picá fino',instruccion:'Cortá tomate, cebolla y ajo en cubos pequeños.',timer:0},{titulo:'Mezclá y reposá',instruccion:'Combiná con aceite, sal y orégano. Reposá 30 min.',timer:1800}]},
-];
+// LOCAL_RECIPES se carga desde recetas.js (ver <script src="recetas.js">)
 
 // ── STATE ─────────────────────────────────────────────────────────────────────
 var invState=[
@@ -833,6 +823,8 @@ var prefs={region:'ar',localFirst:true,goal:'balance',kcal:2000,allergies:[],die
 var recFilter='all';
 var currentRecipeId=null;
 var currentRecipeSource='local';
+var currentRecipeList=[]; // list of recipe IDs/objects for navigation
+var currentRecipeListIdx=0; // position in list
 var currentApiRecipe=null;
 var currentPorciones=0;
 var stepTimers={};
@@ -850,7 +842,15 @@ var cocinaApiMeals=[]; // TheMealDB meals loaded for ¡A la cocina!
 
 // ── UTILS ─────────────────────────────────────────────────────────────────────
 function getQty(id){var i=invState.find(function(x){return x.id===id;});return i?i.qty:0;}
-function getName(id){var i=invState.find(function(x){return x.id===id;});return i?i.name:id;}
+function getName(id){
+  var i=invState.find(function(x){return x.id===id;});
+  if(i)return i.name;
+  // Fallback: find in catalog
+  var c=ING_CATALOG.find(function(x){return x.id===id;});
+  if(c)return c.name;
+  // Last resort: clean up id (replace underscores with spaces, capitalize)
+  return id.replace(/_/g,' ').replace(/\w/g,function(l){return l.toUpperCase();});
+}
 function fmtTime(sec){return String(Math.floor(sec/60)).padStart(2,'0')+':'+String(sec%60).padStart(2,'0');}
 
 function displayQty(qty,unit){
@@ -937,7 +937,7 @@ function showPage(id,btn){
   if(id==='tips')renderGlobalTips();
   if(id==='recetas'){renderWishlist();renderAllRecipes();}
   if(id==='balance')renderBalance();
-  if(id==='prefs')renderAllergyGrid();
+  if(id==='prefs'){renderAllergyGrid();renderDietGrid();}
 }
 
 function savePrefs(){
@@ -967,9 +967,17 @@ function renderCocina(){
   document.getElementById('filter-partial').textContent=s('filter_partial');
   var catF=document.getElementById('cat-f').value;
   var nutF=document.getElementById('nut-f').value;
-  // Local recipes: ok = all ingredients, partial = missing 3 or fewer
+  var searchEl=document.getElementById('cocina-search');
+  var searchQ=searchEl?searchEl.value.trim().toLowerCase():'';
+  var clearBtn=document.getElementById('cocina-search-clear');
+  if(clearBtn)clearBtn.style.display=searchQ?'block':'none';
+
   var list=LOCAL_RECIPES.filter(function(r){
     if(isAllergyBlocked(r)||isDietBlocked(r))return false;
+    if(searchQ){
+      var hay=(r.name+' '+r.desc+' '+r.cat+' '+(r.ings||[]).map(function(i){return getName(i.id);}).join(' ')).toLowerCase();
+      if(hay.indexOf(searchQ)<0)return false;
+    }
     var st=calcStatus(r);
     if(st.status==='ok')return true;
     if(st.status==='partial'&&st.miss.length<=5)return true;
@@ -1030,8 +1038,22 @@ function renderCocina(){
       '</button></div>';
   }
 
-  if(!list.length&&!blocked.length&&!apiWished.length&&!cocinaApiMeals.length)
-    html='<div class="empty">'+s('no_recetas')+'</div>';
+  if(!list.length&&!blocked.length&&!apiWished.length&&!cocinaApiMeals.length){
+    if(searchQ){
+      var allMatch=LOCAL_RECIPES.filter(function(r){
+        var hay=(r.name+' '+r.desc+' '+r.cat+' '+(r.ings||[]).map(function(i){return getName(i.id);}).join(' ')).toLowerCase();
+        return hay.indexOf(searchQ)>=0;
+      });
+      if(allMatch.length){
+        html+='<div class="section-sep"><span class="sep-label">'+(appLang==='es'?'Resultados para: "'+searchQ+'"':'Results: "'+searchQ+'"')+'</span><div class="sep-line"></div></div>';
+        html+='<div class="cards">'+allMatch.map(localCardHTML).join('')+'</div>';
+      } else {
+        html='<div class="empty">'+(appLang==='es'?'Sin resultados para "'+searchQ+'"':'No results for "'+searchQ+'"')+'</div>';
+      }
+    } else {
+      html='<div class="empty">'+s('no_recetas')+'</div>';
+    }
+  }
 
   // ── ALLERGY ALTERNATIVES ──
   if(blocked.length&&recFilter==='all'){
@@ -1101,12 +1123,12 @@ function localCardHTML(r){
   var pc=st.status==='ok'?'p-green':st.status==='nostock'?'p-red':'p-amber';
   var missTxt=st.miss.length>0?(' ('+st.miss.length+')'):'';
   var pt=st.status==='ok'?s('filter_ok'):(s('filter_partial')+missTxt);
-  return '<div class="card" onclick="openLocalDetalle('+r.id+')">'+
+  return '<div class="card" onclick="openWithNavList('+r.id+')">'+
     '<div class="card-top"><div class="card-name">'+r.name+'</div><span class="pill '+pc+'">'+pt+'</span></div>'+
     '<div class="card-meta"><span style="font-size:10px;color:var(--text3);font-family:sans-serif">'+r.cat+'</span>'+(r.region!=='all'?'<span class="p-region">'+REGION_FLAGS[r.region]+' '+REGION_LABELS[r.region]+'</span>':'')+'</div>'+
     '<div class="card-desc">'+r.desc+'</div>'+
-    '<div class="nut-mini"><span class="nm">'+r.nut.kcal+'<span>kcal</span></span><span class="nm">'+r.nut.prot+'g<span>prot</span></span><span class="nm">'+r.nut.carbs+'g<span>carbs</span></span></div>'+
-    '<button class="btn coral" style="width:100%;margin-top:4px" onclick="event.stopPropagation();openLocalDetalle('+r.id+')">'+s('ver_receta')+'</button></div>';
+    '<div class="nut-mini"><span class="nm">'+Math.round(r.nut.kcal/r.porciones)+'<span>kcal/p</span></span><span class="nm">'+Math.round(r.nut.prot/r.porciones)+'g<span>prot</span></span><span class="nm">'+Math.round(r.nut.carbs/r.porciones)+'g<span>carbs</span></span></div>'+
+    '<button class="btn coral" style="width:100%;margin-top:4px" onclick="event.stopPropagation();openWithNavList('+r.id+')">'+s('ver_receta')+'</button></div>';
 }
 
 function setFilter(f,el){
@@ -1117,8 +1139,44 @@ function setFilter(f,el){
 }
 
 // ── LOCAL DETALLE ─────────────────────────────────────────────────────────────
-function openLocalDetalle(id){
+
+function openWithNavList(id){
+  // Build nav list from currently visible recipes in ¡A la cocina!
+  var catF=document.getElementById('cat-f')?document.getElementById('cat-f').value:'all';
+  var list=LOCAL_RECIPES.filter(function(r){
+    if(isAllergyBlocked(r)||isDietBlocked(r))return false;
+    var st=calcStatus(r);
+    return st.status==='ok'||(st.status==='partial'&&st.miss.length<=5);
+  });
+  if(catF&&catF!=='all')list=list.filter(function(r){return r.cat===catF;});
+  list=sortByRegion(list);
+  var navList=list.map(function(r){return r.id;});
+  if(navList.indexOf(id)<0)navList=[id].concat(navList);
+  currentRecipeList=navList;
+  openLocalDetalle(id,navList);
+}
+function openLocalDetalle(id,navList){
   currentRecipeId=id;currentRecipeSource='local';
+  // Set navigation list
+  if(navList){
+    currentRecipeList=navList;
+    currentRecipeListIdx=navList.indexOf(id);
+  } else if(currentRecipeList.length===0||currentRecipeList.indexOf(id)<0){
+    // Build from visible recipes in ¡A la cocina!
+    var visible=LOCAL_RECIPES.filter(function(r){
+      if(isAllergyBlocked(r)||isDietBlocked(r))return false;
+      var st=calcStatus(r);
+      return st.status==='ok'||(st.status==='partial'&&st.miss.length<=5);
+    });
+    currentRecipeList=visible.map(function(r){return r.id;});
+    currentRecipeListIdx=currentRecipeList.indexOf(id);
+    if(currentRecipeListIdx<0){
+      currentRecipeList=LOCAL_RECIPES.map(function(r){return r.id;});
+      currentRecipeListIdx=currentRecipeList.indexOf(id);
+    }
+  } else {
+    currentRecipeListIdx=currentRecipeList.indexOf(id);
+  }
   var r=LOCAL_RECIPES.find(function(x){return x.id===id;});
   currentPorciones=r.porciones;stepTimers={};
   document.querySelectorAll('.page').forEach(function(p){p.classList.remove('active');});
@@ -1126,14 +1184,62 @@ function openLocalDetalle(id){
   document.querySelectorAll('.nav-btn').forEach(function(b){b.classList.remove('active');});
   document.getElementById('instrucciones-section').style.display='none';
   document.getElementById('back-btn').textContent=s('volver');
-  renderLocalDetalle();renderRecipeTips(r);window.scrollTo(0,0);
+  renderLocalDetalle();renderRecipeTips(r);renderNavBar();window.scrollTo(0,0);
+}
+
+// ── RECIPE NAVIGATION ─────────────────────────────────────────────────────────
+function getNavContext(){
+  // Returns {prev, next} recipe IDs or null
+  if(currentRecipeSource==='local'&&currentRecipeList.length>1){
+    var idx=currentRecipeListIdx;
+    return {
+      prev: idx>0?currentRecipeList[idx-1]:currentRecipeList[currentRecipeList.length-1],
+      next: idx<currentRecipeList.length-1?currentRecipeList[idx+1]:currentRecipeList[0],
+      pos: idx+1,
+      total: currentRecipeList.length
+    };
+  }
+  return null;
+}
+
+function navRecipePrev(){
+  var ctx=getNavContext();
+  if(ctx)openLocalDetalle(ctx.prev);
+}
+function navRecipeNext(){
+  var ctx=getNavContext();
+  if(ctx)openLocalDetalle(ctx.next);
+}
+
+function renderNavBar(){
+  var ctx=getNavContext();
+  var el=document.getElementById('recipe-nav-bar');
+  if(!el)return;
+  if(!ctx){el.style.display='none';return;}
+  el.style.display='flex';
+  var prevR=LOCAL_RECIPES.find(function(x){return x.id===ctx.prev;});
+  var nextR=LOCAL_RECIPES.find(function(x){return x.id===ctx.next;});
+  el.innerHTML=
+    '<button class="btn" onclick="navRecipePrev()" style="display:flex;align-items:center;gap:6px;flex:1;justify-content:flex-start">'+
+      '<span style="font-size:18px">←</span>'+
+      '<span style="font-size:11px;text-align:left;line-height:1.3"><span style="font-size:9px;color:var(--text3);display:block">'+(appLang==='es'?'Anterior':'Previous')+'</span>'+
+      (prevR?prevR.name:'')+'</span>'+
+    '</button>'+
+    '<span style="font-size:11px;color:var(--text3);font-family:sans-serif;padding:0 8px;white-space:nowrap">'+ctx.pos+'/'+ctx.total+'</span>'+
+    '<button class="btn" onclick="navRecipeNext()" style="display:flex;align-items:center;gap:6px;flex:1;justify-content:flex-end;text-align:right">'+
+      '<span style="font-size:11px;text-align:right;line-height:1.3"><span style="font-size:9px;color:var(--text3);display:block">'+(appLang==='es'?'Siguiente':'Next')+'</span>'+
+      (nextR?nextR.name:'')+'</span>'+
+      '<span style="font-size:18px">→</span>'+
+    '</button>';
 }
 
 function renderLocalDetalle(){
   var r=LOCAL_RECIPES.find(function(x){return x.id===currentRecipeId;});
   var f=currentPorciones/r.porciones;
   var st=calcStatus(r,f);
-  var kcal=Math.round(r.nut.kcal*f),prot=Math.round(r.nut.prot*f),carbs=Math.round(r.nut.carbs*f),grasas=Math.round(r.nut.grasas*f);
+  // Nutrition: stored as total for r.porciones, display per currentPorciones
+  var perPorcion=function(val){return Math.round(val/r.porciones);};
+  var kcal=Math.round(perPorcion(r.nut.kcal)*currentPorciones),prot=Math.round(perPorcion(r.nut.prot)*currentPorciones),carbs=Math.round(perPorcion(r.nut.carbs)*currentPorciones),grasas=Math.round(perPorcion(r.nut.grasas)*currentPorciones);
   var canCook=st.status==='ok';
   var ingRows=r.ings.map(function(ing){
     var needed=Math.ceil(ing.qty*f);var avail=getQty(ing.id);
@@ -1151,6 +1257,7 @@ function renderLocalDetalle(){
     '<div class="pb-num">'+currentPorciones+'</div>'+
     '<div class="pb-word">'+(currentPorciones===1?s('porcion'):s('porciones'))+'</div>'+
     '<button class="pb-btn" onclick="cambiarPorciones(1)" '+(currentPorciones>=20?'disabled':'')+'>+</button></div></div>'+
+    '<div style="font-size:10px;color:var(--text3);font-family:sans-serif;margin-bottom:4px">'+(currentPorciones===1?'Por porción':'Para '+currentPorciones+' porciones')+'</div>'+
     '<div class="nut-grid">'+
     '<div class="nut-card"><div class="nut-v">'+kcal+'</div><div class="nut-l">kcal</div></div>'+
     '<div class="nut-card"><div class="nut-v">'+prot+'g</div><div class="nut-l">prot</div></div>'+
@@ -1195,7 +1302,13 @@ function confirmarCocinar(){
   var nut=r.nut||{kcal:0,prot:0,carbs:0,grasas:0};
   // Only track local recipes in balance (API recipes are inspiration only)
   if(currentRecipeSource==='local'){
-    cookHistory.unshift({name:r.name,date:'Hoy',kcal:Math.round(nut.kcal*f),prot:Math.round(nut.prot*f),carbs:Math.round(nut.carbs*f),grasas:Math.round(nut.grasas*f)});
+    // Save per-portion values times portions eaten
+    var pp=r.porciones||1;
+    cookHistory.unshift({name:r.name,date:'Hoy',
+      kcal:Math.round((nut.kcal/pp)*currentPorciones),
+      prot:Math.round((nut.prot/pp)*currentPorciones),
+      carbs:Math.round((nut.carbs/pp)*currentPorciones),
+      grasas:Math.round((nut.grasas/pp)*currentPorciones)});
   }
   var btn=document.getElementById('cocinar-btn');
   btn.disabled=true;btn.textContent=appLang==='es'?'¡Ingredientes descontados!':'Ingredients deducted!';btn.style.background='var(--green)';
@@ -1221,7 +1334,7 @@ function parseShopUnit(qtyStr){
 }
 
 // Accumulate: sums quantity if same unit, otherwise appends
-function accumulateShopItem(name,qty,unit){
+function accumulateShopItem(name,qty,unit,catalogId){
   var key=name.toLowerCase().trim();
   var ex=shopList.find(function(si){return si.name.toLowerCase().trim()===key;});
   if(ex){
@@ -1236,8 +1349,10 @@ function accumulateShopItem(name,qty,unit){
     } else {
       ex.qty=qty+unit;
     }
+    // Keep catalogId if not set yet
+    if(!ex.catalogId&&catalogId)ex.catalogId=catalogId;
   } else {
-    shopList.push({id:Date.now()+Math.random()+'',name:name,qty:qty+unit,checked:false});
+    shopList.push({id:Date.now()+Math.random()+'',name:name,qty:qty+unit,checked:false,catalogId:catalogId||null});
   }
 }
 
@@ -1247,7 +1362,7 @@ function addAllLocalIngsToShop(id){
   r.ings.forEach(function(ing){
     var nm=getName(ing.id);
     var qty=Math.ceil(ing.qty*f);
-    accumulateShopItem(nm,qty,ing.unit);
+    accumulateShopItem(nm,qty,ing.unit,ing.id);
   });
   showToast(r.ings.length+' '+s('ing_agregados'));
   renderShop();
@@ -1260,7 +1375,7 @@ function addMissingToShop(){
   st.miss.forEach(function(m){
     var nm=getName(m.id);
     var qty=Math.ceil(m.needed-m.avail);
-    accumulateShopItem(nm,qty,m.unit);
+    accumulateShopItem(nm,qty,m.unit,m.id);
     count++;
   });
   showToast(count+' '+s('ing_agregados'));
@@ -1727,6 +1842,9 @@ function openApiDetalle(mealId){
   document.getElementById('back-btn').textContent=s('volver');
   renderApiDetalle();renderRecipeTips(currentApiRecipe);
   loadApiNutrition();translateApiIngredients();
+  currentRecipeList=[];// API recipes don't have local nav list
+  var navEl=document.getElementById('recipe-nav-bar');
+  if(navEl)navEl.style.display='none';
   window.scrollTo(0,0);
 }
 
@@ -2017,14 +2135,108 @@ function addShopItemSmart(){
 
 function renderShop(){
   var el=document.getElementById('shop-list');
-  if(!shopList.length){el.innerHTML='<div class="empty" style="padding:1rem 0">'+(appLang==='es'?'Tu lista está vacía. Agregá ingredientes o usá el botón de faltantes desde una receta.':'Your list is empty. Add ingredients or use the missing items button from a recipe.')+'</div>';return;}
-  el.innerHTML=shopList.map(function(si){
-    return '<div class="shop-item '+(si.checked?'checked':'')+'">'+
-    '<input type="checkbox" '+(si.checked?'checked':'')+' onchange="toggleShop(\''+si.id+'\')" style="accent-color:var(--coral);width:16px;height:16px;cursor:pointer;flex-shrink:0"/>'+
-    '<span class="shop-name '+(si.checked?'done':'')+'">'+si.name+'</span>'+
-    '<span class="shop-qty">'+si.qty+'</span>'+
-    '<button onclick="delShop(\''+si.id+'\')" style="background:none;border:none;cursor:pointer;font-size:14px;color:var(--peach2);padding:2px 4px">✕</button></div>';
-  }).join('');
+  if(!shopList.length){
+    el.innerHTML='<div class="empty" style="padding:1rem 0">'+(appLang==='es'?'Tu lista est\u00e1 vac\u00eda. Agreg\u00e1 ingredientes o us\u00e1 el bot\u00f3n de faltantes desde una receta.':'Your list is empty. Add ingredients or use the missing items button from a recipe.')+'</div>';
+    return;
+  }
+  var pending=shopList.filter(function(si){return !si.checked;});
+  var checked=shopList.filter(function(si){return si.checked;});
+  var html='';
+  if(pending.length){
+    html+=pending.map(function(si){
+      return '<div class="shop-item" id="sitem-'+si.id+'">'+
+        '<input type="checkbox" data-id="'+si.id+'" class="shop-chk" style="accent-color:var(--coral);width:18px;height:18px;cursor:pointer;flex-shrink:0"/>'+
+        '<span class="shop-name">'+si.name+'</span>'+
+        '<span class="shop-qty" style="color:var(--text3);font-size:12px;font-family:sans-serif">'+si.qty+'</span>'+
+        '<button data-del="'+si.id+'" class="shop-del" style="background:none;border:none;cursor:pointer;font-size:14px;color:var(--peach2);padding:2px 6px">&#x2715;</button>'+
+      '</div>';
+    }).join('');
+  }
+  if(checked.length){
+    html+='<div style="margin-top:12px;margin-bottom:6px;display:flex;align-items:center;justify-content:space-between">'+
+      '<span style="font-size:11px;font-weight:700;color:var(--green);font-family:sans-serif;text-transform:uppercase;letter-spacing:.5px">'+
+        '\u2713 '+(appLang==='es'?'Comprado ('+checked.length+')':'Purchased ('+checked.length+')')+
+      '</span>'+
+      '<button id="btn-add-inv" class="btn" style="font-size:11px;padding:4px 12px;background:var(--green);color:#fff;border-color:var(--green)">'+
+        '\uD83D\uDCE6 '+(appLang==='es'?'Pasar al inventario':'Add to inventory')+
+      '</button>'+
+    '</div>';
+    html+=checked.map(function(si){
+      return '<div class="shop-item checked" id="sitem-'+si.id+'">'+
+        '<input type="checkbox" checked data-id="'+si.id+'" class="shop-chk" style="accent-color:var(--green);width:18px;height:18px;cursor:pointer;flex-shrink:0"/>'+
+        '<span class="shop-name done">'+si.name+'</span>'+
+        '<span class="shop-qty" style="color:var(--text3);font-size:12px;font-family:sans-serif">'+si.qty+'</span>'+
+        '<button data-del="'+si.id+'" class="shop-del" style="background:none;border:none;cursor:pointer;font-size:14px;color:var(--peach2);padding:2px 6px">&#x2715;</button>'+
+      '</div>';
+    }).join('');
+  }
+  el.innerHTML=html;
+  // Attach events via JS (no inline onclick)
+  el.querySelectorAll('.shop-chk').forEach(function(cb){
+    cb.addEventListener('change',function(){toggleShop(this.dataset.id);});
+  });
+  el.querySelectorAll('.shop-del').forEach(function(btn){
+    btn.addEventListener('click',function(){delShop(this.dataset.del);});
+  });
+  var addInvBtn=el.querySelector('#btn-add-inv');
+  if(addInvBtn)addInvBtn.addEventListener('click',addCheckedToInventory);
+}
+
+function addCheckedToInventory(){
+  var checked=shopList.filter(function(si){return si.checked;});
+  var added=0;var updated=0;
+  checked.forEach(function(si){
+    var qtyNum=parseShopQty(si.qty)||1;
+    var unit=parseShopUnit(si.qty);
+
+    // 1. Try direct catalogId match (fastest and most reliable)
+    var catalogMatch=si.catalogId?ING_CATALOG.find(function(c){return c.id===si.catalogId;}):null;
+    // 2. Exact name match
+    if(!catalogMatch)catalogMatch=ING_CATALOG.find(function(c){return c.name.toLowerCase()===si.name.toLowerCase();});
+    // 3. Partial name match
+    if(!catalogMatch)catalogMatch=ING_CATALOG.find(function(c){
+      return c.name.toLowerCase().indexOf(si.name.toLowerCase())>=0||
+             si.name.toLowerCase().indexOf(c.name.toLowerCase().split(' ')[0])>=0;
+    });
+
+    if(catalogMatch){
+      var baseUnit=catalogMatch.unit;
+      var qtyBase=qtyNum;
+      if(unit==='kg'&&baseUnit==='g') qtyBase=qtyNum*1000;
+      else if(unit==='L'&&baseUnit==='ml') qtyBase=qtyNum*1000;
+      else if(unit==='g'&&baseUnit==='g') qtyBase=qtyNum;
+      else if(unit==='ml'&&baseUnit==='ml') qtyBase=qtyNum;
+      var existing=invState.find(function(x){return x.id===catalogMatch.id;});
+      if(existing){
+        existing.qty=Math.round((existing.qty+qtyBase)*100)/100;
+        updated++;
+      } else {
+        invState.push({id:catalogMatch.id,name:catalogMatch.name,qty:Math.round(qtyBase*100)/100,unit:baseUnit,min:10});
+        added++;
+      }
+    } else {
+      // Custom item — match by name in invState or create new
+      var invMatch=invState.find(function(x){return x.name.toLowerCase()===si.name.toLowerCase();});
+      if(invMatch){
+        invMatch.qty=Math.round((invMatch.qty+qtyNum)*100)/100;
+        updated++;
+      } else {
+        invState.push({id:'custom_'+Date.now()+Math.random(),name:si.name,qty:qtyNum,unit:unit||'u',min:1});
+        added++;
+      }
+    }
+  });
+  // Remove checked items from list
+  shopList=shopList.filter(function(si){return !si.checked;});
+  renderShop();
+  renderInv();
+  renderMetrics();
+  renderCocina();
+  var total=added+updated;
+  var msg=appLang==='es'?
+    total+' '+(total===1?'ingrediente agregado':'ingredientes agregados')+' al inventario':
+    total+' item'+(total!==1?'s':'')+' added to inventory';
+  showToast('📦 '+msg);
 }
 
 function getShopText(){
@@ -2035,9 +2247,32 @@ function getShopText(){
 function exportCopy(){navigator.clipboard.writeText(getShopText()).then(function(){showToast(s('lista_copiada'));}).catch(function(){var ta=document.createElement('textarea');ta.value=getShopText();document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);showToast(s('lista_copiada'));});}
 function exportWhatsApp(){window.open('https://wa.me/?text='+encodeURIComponent(getShopText()),'_blank');}
 function exportEmail(){window.open('mailto:?subject='+encodeURIComponent((appLang==='es'?'Lista de compras':'Shopping list')+' — Mise.')+'&body='+encodeURIComponent(getShopText()));}
-function toggleShop(id){var si=shopList.find(function(x){return x.id===id;});if(si)si.checked=!si.checked;renderShop();}
+function toggleShop(id){
+  var si=shopList.find(function(x){return x.id===id;});
+  if(!si)return;
+  si.checked=!si.checked;
+  if(si.checked){
+    // Brief animation before re-render
+    var el=document.getElementById('sitem-'+id);
+    if(el){el.style.transition='opacity .3s';el.style.opacity='0.5';}
+    setTimeout(function(){renderShop();},200);
+    showToast('✓ '+si.name+(appLang==='es'?' marcado como comprado':' marked as purchased'),
+      appLang==='es'?'Pasar al inventario':'Add to inventory',
+      function(){addCheckedToInventory();}
+    );
+  } else {
+    renderShop();
+  }
+}
 function delShop(id){shopList=shopList.filter(function(x){return x.id!==id;});renderShop();}
-function clearChecked(){shopList=shopList.filter(function(si){return !si.checked;});renderShop();}
+function clearChecked(){
+  var checked=shopList.filter(function(si){return si.checked;});
+  if(checked.length){
+    shopList=shopList.filter(function(si){return !si.checked;});
+    renderShop();
+    showToast(checked.length+' '+(appLang==='es'?'ítems eliminados de la lista':'items removed from list'));
+  }
+}
 
 // ── TIPS ──────────────────────────────────────────────────────────────────────
 function renderGlobalTips(){
@@ -2085,7 +2320,7 @@ function renderWishlist(){
     var missingCount=st.miss?st.miss.length:0;
     return '<div class="wish-card">'+
     (r.thumb?'<img src="'+r.thumb+'/preview" style="width:60px;height:60px;object-fit:cover;border-radius:8px;flex-shrink:0" onerror="this.style.display=\'none\'"/>':'')+
-    '<div style="flex:1"><div class="wish-name">'+r.name+'</div><div class="wish-meta">'+r.cat+(r.nut?' · '+r.nut.kcal+' kcal':'')+'</div></div>'+
+    '<div style="flex:1"><div class="wish-name">'+r.name+'</div><div class="wish-meta">'+r.cat+(r.nut&&r.porciones?' · '+Math.round(r.nut.kcal/r.porciones)+' kcal/p':'')+'</div></div>'+
     '<span class="pill '+pc+'">'+pt+'</span>'+
     '<div style="display:flex;gap:6px;flex-wrap:wrap">'+
     (isLocal&&missingCount>0?'<button class="btn" onclick="addWishMissing('+r.id+')">+'+s('nav_lista')+'</button>':'')+
@@ -2113,9 +2348,22 @@ function removeWish(id){wishlist=wishlist.filter(function(w){return String(w.id)
 
 function renderAllRecipes(){
   var catF=document.getElementById('rall-cat').value;
+  var searchQ=(document.getElementById('rall-search')?document.getElementById('rall-search').value.trim().toLowerCase():'');
+  var clearBtn=document.getElementById('rall-search-clear');
+  if(clearBtn)clearBtn.style.display=searchQ?'block':'none';
   var list=LOCAL_RECIPES;
   if(catF!=='all')list=list.filter(function(r){return r.cat===catF;});
+  if(searchQ){
+    list=list.filter(function(r){
+      var haystack=(r.name+' '+r.desc+' '+r.cat+' '+(r.ings||[]).map(function(i){return getName(i.id);}).join(' ')).toLowerCase();
+      return haystack.indexOf(searchQ)>=0;
+    });
+  }
   list=sortByRegion(list);
+  if(!list.length){
+    document.getElementById('rall-cards').innerHTML='<div class="empty">'+(searchQ?appLang==='es'?'No se encontraron recetas para "'+searchQ+'"':'No recipes found for "'+searchQ+'"':appLang==='es'?'No hay recetas en esta categoría.':'No recipes in this category.')+'</div>';
+    return;
+  }
   document.getElementById('rall-cards').innerHTML=list.map(function(r){
     var st=calcStatus(r);var blocked=isAllergyBlocked(r);
     var pc=blocked?'p-allergy':st.status==='ok'?'p-green':st.status==='partial'?'p-amber':'p-red';
@@ -2126,7 +2374,7 @@ function renderAllRecipes(){
     '<button class="like-btn '+(inWish?'liked':'')+'" onclick="toggleLocalWish('+r.id+')">'+( inWish?'♥':'♡')+'</button></div>'+
     '<div class="card-meta"><span class="pill '+pc+'">'+pt+'</span>'+(r.region!=='all'?'<span class="p-region">'+REGION_FLAGS[r.region]+'</span>':'')+'</div>'+
     '<div class="card-desc">'+r.desc+'</div>'+
-    '<div class="nut-mini"><span class="nm">'+r.nut.kcal+'<span>kcal</span></span><span class="nm">'+r.nut.prot+'g<span>prot</span></span></div>'+
+    '<div class="nut-mini"><span class="nm">'+Math.round(r.nut.kcal/r.porciones)+'<span>kcal/p</span></span><span class="nm">'+Math.round(r.nut.prot/r.porciones)+'g<span>prot/p</span></span></div>'+
     '<button class="btn dark" style="width:100%;margin-top:4px" onclick="openLocalDetalle('+r.id+')">'+s('ver_receta')+'</button></div>';
   }).join('');
 }
@@ -2211,14 +2459,60 @@ document.addEventListener('click',function(e){
     ss.classList.remove('open');
 });
 
-// Conexión con Supabase
-const SUPABASE_URL = 'https://nonhmzhcyekgmbginazm.supabase.co';
-const SUPABASE_ANON_KEY = 'sb_publishable_SjXd2rFXP1x2WWDg1rKDdw_IM38qQmQ';
+function clearCocinaSearch(){
+  var el=document.getElementById('cocina-search');
+  if(el){el.value='';el.focus();}
+  renderCocina();
+}
+function clearRallSearch(){
+  var el=document.getElementById('rall-search');
+  if(el){el.value='';el.focus();}
+  renderAllRecipes();
+}
 
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-  // ── INIT ──────────────────────────────────────────────────────────────────────
+// ── INIT ──────────────────────────────────────────────────────────────────────
 renderCocina();
 renderGlobalTips();
+// Sincronización de recetas locales a Supabase
+async function syncRecipesToSupabase() {
+  console.log('Iniciando sincronización de recetas...');
+  
+  const client = window.supabaseClient;
+
+  if (!client) {
+    console.error('Error: No se detectó la conexión a Supabase.');
+    return;
+  }
+
+  const { data: existingRecipes, error: fetchError } = await client
+    .from('recipes')
+    .select('id');
+
+  if (fetchError) {
+    console.error('Error al consultar recetas:', fetchError.message);
+    return;
+  }
+
+  const existingIds = new Set(existingRecipes.map(r => r.id));
+  const newRecipes = LOCAL_RECIPES.filter(r => !existingIds.has(r.id));
+
+  if (newRecipes.length === 0) {
+    console.log('Todas las recetas ya están en Supabase.');
+    return;
+  }
+
+  const { error: insertError } = await client
+    .from('recipes')
+    .insert(newRecipes);
+
+  if (insertError) {
+    console.error('Error al subir recetas:', insertError.message);
+  } else {
+    console.log(`¡Éxito! Se subieron ${newRecipes.length} recetas a Supabase.`);
+  }
+}
+
+// syncRecipesToSupabase();
 loadCocinaApiMeals(); // load TheMealDB recipes for ¡A la cocina! in background
 </script>
 </body>
