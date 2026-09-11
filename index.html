@@ -2557,16 +2557,15 @@ function toggleAllergy(id,el){
 
 // ── BALANCE ───────────────────────────────────────────────────────────────────
 function renderBalance(){
-  var now=new Date();
-  document.getElementById('bal-month').textContent=now.toLocaleString(appLang==='es'?'es':'en',{month:'long'})+' '+now.getFullYear()+' — '+cookHistory.length+' '+s('comidas_reg');
-  var avg=function(n){return cookHistory.length?Math.round(cookHistory.reduce(function(a,c){return a+c[n];},0)/cookHistory.length):0;};
-  var aKcal=avg('kcal'),aProt=avg('prot'),aCarb=avg('carbs'),aGrasa=avg('grasas');
-  document.getElementById('bal-metrics').innerHTML=
-    '<div class="metric"><div class="metric-num mn-coral">'+aKcal+'</div><div class="metric-label">kcal</div></div>'+
-    '<div class="metric"><div class="metric-num mn-green">'+aProt+'g</div><div class="metric-label">prot</div></div>'+
-    '<div class="metric"><div class="metric-num mn-amber">'+aCarb+'g</div><div class="metric-label">carbs</div></div>'+
-    '<div class="metric"><div class="metric-num" style="color:var(--text2)">'+aGrasa+'g</div><div class="metric-label">grasas</div></div>';
-  var gk=prefs.kcal||2000;
+var now = new Date();
+    document.getElementById('bal-month').textContent = now.toLocaleDateString(appLang==='es'?'es':'en', {month:'long'})+' '+now.getFullYear()+' — '+cookHistory.length+' '+s('comidas_reg');
+    var total = function(n) { return cookHistory.reduce(function(a,r){return a+r[n];},0); };
+    var xkcal = total('kcal'), xProt = total('prot'), xCarb = total('carbs'), xGrasa = total('grasas');
+document.getElementById('bal-metrics').innerHTML = 
+      '<div class="metric"><div class="metric-num m-coral">'+xkcal+'<span class="metric-label">kcal</span></div></div>'+
+      '<div class="metric"><div class="metric-num m-green">'+xProt+'g<span class="metric-label">prot</span></div></div>'+
+      '<div class="metric"><div class="metric-num m-amber">'+xCarb+'g<span class="metric-label">carbs</span></div></div>'+
+      '<div class="metric"><div class="metric-num" style="color:var(--text2)">'+xGrasa+'g<span class="metric-label">grasas</span></div></div>';
   document.getElementById('b-kcal-txt').textContent=aKcal+' / '+gk+' kcal';
   document.getElementById('b-kcal-bar').style.width=Math.min(100,Math.round(aKcal/gk*100))+'%';
   document.getElementById('b-prot-txt').textContent=aProt+'g / 50g';
