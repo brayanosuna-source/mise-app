@@ -2559,7 +2559,7 @@ function toggleAllergy(id,el){
 function renderBalance(){
 var now = new Date();
     document.getElementById('bal-month').textContent = now.toLocaleDateString(appLang==='es'?'es':'en', {month:'long'})+' '+now.getFullYear()+' — '+cookHistory.length+' '+s('comidas_reg');
-    var total = function(n) { return cookHistory.reduce(function(a,r){return a+r[n];},0); };
+var total = function(n) { return cookHistory.reduce(function(a,r){return a+(r[n]||0);},0); };
     var xkcal = total('kcal'), xProt = total('prot'), xCarb = total('carbs'), xGrasa = total('grasas');
 document.getElementById('bal-metrics').innerHTML = 
       '<div class="metric"><div class="metric-num m-coral">'+xkcal+'<span class="metric-label">kcal</span></div></div>'+
