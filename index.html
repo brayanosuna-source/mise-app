@@ -8,7 +8,6 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default"/>
 <title>Mise. — Tu cocina inteligente</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-window.LOCAL_RECIPES = [];
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -514,7 +513,8 @@ input:checked+.slider-tog:before{transform:translateX(17px)}
   </div>
 </div>
 <script>
-  const SUPABASE_URL = 'https://nonhmzhcyekgmbginazm.supabase.co';
+ window.LOCAL_RECIPES = [];
+ const SUPABASE_URL = 'https://nonhmzhcyekgmbginazm.supabase.co';
   const SUPABASE_KEY = 'sb_publishable_SjXd2rFXP1x2WWDg1rKDdw_IM38qQmQ';
   window.supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
   // Variables de estado de Auth
